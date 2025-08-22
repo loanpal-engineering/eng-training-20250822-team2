@@ -125,36 +125,40 @@ def register():
         password = request.form['password']
         confirm_password = request.form['confirm_password']
         role = request.form['role']
-        quote_id = None
-        if 'quote_id' in request.form:
-            quote_id = request.form['quote_id']
+        if role not in ['superadmin', 'admin']:
+            quote_id = None
+            if 'quote_id' in request.form:
+                quote_id = request.form['quote_id']
 
-        if password != confirm_password:
-            flash("Passwords do not match.", "danger")
-            return render_template('register.html', username=username)
-        
-        # Hash the password
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            if password != confirm_password:
+                flash("Passwords do not match.", "danger")
+                return render_template('register.html', username=username)
+            
+            # Hash the password
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        # Create a new user object
-        user = User(username=username, password_hash=hashed_password, user_type=role)
-        db.session.add(user)
-        db.session.commit()
-
-        if quote_id:
-            quote = MortgageQuote.query.get(quote_id)
-            quote.user_id = user.id
+            # Create a new user object
+            user = User(username=username, password_hash=hashed_password, user_type=role)
+            db.session.add(user)
             db.session.commit()
 
-        # Create a flask session
-        session['user_id'] = user.id
-        session['username'] = user.username
-        session['user_type'] = user.user_type
-        session['session_token'] = str(uuid.uuid4())
-        session.permanent = True
-        db.session.add(Session(user_id=user.id, session_token=session['session_token']))
+            if quote_id:
+                quote = MortgageQuote.query.get(quote_id)
+                quote.user_id = user.id
+                db.session.commit()
 
-        return redirect(url_for('main.index'))
+            # Create a flask session
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['user_type'] = user.user_type
+            session['session_token'] = str(uuid.uuid4())
+            session.permanent = True
+            db.session.add(Session(user_id=user.id, session_token=session['session_token']))
+
+            return redirect(url_for('main.index'))
+        else:
+            flash("You cannot create admin or superadmin accounts through registration.", "danger")
+            return render_template('register.html', username=username)
 
     return render_template('register.html')
 
