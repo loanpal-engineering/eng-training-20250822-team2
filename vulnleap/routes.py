@@ -42,7 +42,8 @@ def index():
     return render_template('index.html')
 
 @main.route('/quote', methods=['GET', 'POST'])
-def quote():
+@main.route('/quote/<int:quote_id>', methods=['GET', 'POST'])
+def quote(quote_id=None):
     if request.method == 'POST':
         loan_term_str = request.form['loan_term']
         home_cost_str = request.form['home_cost']
@@ -109,7 +110,24 @@ def quote():
                                total_interest=total_interest,
                                loan_term=loan_term,
                                quote_id=quote.id)
-    return render_template('quote.html', interest_rate=interest_rate)
+    else:
+        if 'user_id' in session and session['user_id'] is not None:
+            quotes = MortgageQuote.query.filter_by(user_id=session['user_id']).all()
+            
+            if quote_id is not None:
+                # Check if the quote_id exists in the user's quotes
+                quote_ids = [quote.id for quote in quotes]
+                if quote_id not in quote_ids:
+                    flash("Quote not found or you don't have access to it.", "danger")
+                    return redirect(url_for('main.quote'))
+                
+                # Get the specific quote
+                selected_quote = next(quote for quote in quotes if quote.id == quote_id)
+                return render_template('quote.html', 
+                                     interest_rate=interest_rate, 
+                                     selected_quote=selected_quote)
+        
+        return render_template('quote.html', interest_rate=interest_rate)
 
 @main.route('/register', methods=['GET', 'POST'])
 def register():
